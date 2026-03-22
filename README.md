@@ -125,8 +125,6 @@ A web-based facial recognition attendance system that:
 
 ## Developer
 
-- **Name:** 이시온
-- **Grade/Class:** (학년/반 입력)
-- **School:** (학교명 입력)
+- **Name:** Jack
+- **School:** DISCIPLE INTERNATIONAL CHRISTIAN SCHOOL
 - **Project:** Capstone Project #1
-- **Advisor:** Josh Teacher
