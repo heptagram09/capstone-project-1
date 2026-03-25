@@ -1,27 +1,30 @@
-# capstone-project-1
-
-# Capstone Project #1 — AI-Based Student Attendance Verification System
-
-## Project Overview
-
-This project is a real-time facial recognition system designed to streamline student attendance verification during evening self-study (야자) sessions at school. The traditional method of manually checking student ID cards is time-consuming and prone to human error. This system replaces that process with an automated, camera-based face authentication solution that can identify students within 1–2 seconds.
+# Face Authentication Attendance System
+### Capstone Project #1 — AI-Based Real-Time Student Check-In
 
 ---
 
-## Problem Statement
+## Why I Built This
 
-In many Korean high schools, students are required to present their physical ID cards during evening study hall check-ins. This manual process creates bottlenecks when large numbers of students arrive simultaneously, and can lead to inaccurate records. The goal of this project is to solve that inefficiency through computer vision and AI.
+Every evening before mandatory self-study (야자), our school's supervising teacher manually checked attendance by going through each student one by one — writing names by hand, flipping through lists, calling out. The first ten minutes of every session were noisy and disorganized, and the teacher's time was spent on something a machine could do in a second.
+
+I am the head of the school's media department, which gave me access to a professional Canon DSLR camera that most students don't have. I thought: we already have photos of every student on file. We have a high-resolution camera. Why are we still doing this by hand?
+
+That question turned into this project.
 
 ---
 
-## Solution
+## What It Does
 
-A web-based facial recognition attendance system that:
-- Automatically detects and identifies a student's face through a laptop webcam
-- Matches the live face against pre-registered student ID photos stored in a database
-- Records attendance in real time with a timestamp
-- Displays the result (verified / already checked in / no match) immediately on screen
-- Prevents duplicate check-ins within a 30-minute window
+A real-time face recognition system that replaces manual ID-card attendance checks with an automated camera-based solution.
+
+- A student walks up to an external webcam
+- The system captures a frame every **0.8 seconds** automatically — no button press needed
+- DeepFace extracts a **512-dimensional facial embedding** using the Facenet512 model
+- The embedding is compared against every registered student using **cosine similarity**
+- If matched, attendance is logged to PostgreSQL with a **KST timestamp**
+- A color-coded message bar always shows the current status — the screen is never blank
+
+Students who check in within **30 minutes** of a previous entry receive an "already verified" message instead of a duplicate log.
 
 ---
 
@@ -30,101 +33,92 @@ A web-based facial recognition attendance system that:
 | Layer | Technology |
 |---|---|
 | Frontend | HTML, CSS, JavaScript |
-| Backend | Python, FastAPI |
-| AI / Face Recognition | DeepFace (Facenet512 model), OpenCV |
+| Backend | Python 3.11, FastAPI, Uvicorn |
+| Face Recognition AI | DeepFace (Facenet512), OpenCV, rembg |
 | Database | PostgreSQL, SQLAlchemy ORM |
-| Dev Environment | Visual Studio Code, Uvicorn |
+| Security | JWT (python-jose), bcrypt (passlib) |
+| Deployment | Cloudflare Pages (frontend) + Cloudflare Tunnel (backend) |
 
 ---
 
-## System Architecture
+## How the Face Recognition Works
 
 ```
-[Browser / Laptop Webcam]
-        ↓  (Base64 image via HTTP POST)
-[FastAPI Backend]
+External Webcam Frame (1080p)
         ↓
-[DeepFace Engine]
-  - Face detection (OpenCV)
-  - Embedding extraction (Facenet512, 512-dim vector)
-  - Cosine similarity comparison
+OpenCV — detect and crop face region only
+(background, clothing, lighting all ignored)
         ↓
-[PostgreSQL Database]
-  - students (student info)
-  - face_embeddings (512-dim vectors)
-  - attendance_logs (check-in records)
+Histogram equalization — normalize lighting differences
         ↓
-[Result displayed on screen]
-  ✅ Authentication complete
-  ↩ Already verified
-  ❌ No matching face
-  👤 Please face the camera
+Brightness / contrast / sharpness enhancement
+        ↓
+DeepFace Facenet512 — extract 512-dim embedding vector
+        ↓
+Cosine similarity vs. all registered embeddings in PostgreSQL
+        ↓
+Result: ✅ Verified  ↩ Already checked in  ❌ No match  👤 Face not detected
 ```
+
+**Registration** uses rembg AI background removal to produce clean embeddings from Canon camera photos.
+**Verification** skips rembg entirely — only face crop and enhancement — keeping latency under 1 second.
 
 ---
 
 ## Key Features
 
-- **Real-time auto-scan** — The system captures and analyzes a frame every 0.8 seconds without any button press required
-- **Instant feedback** — A color-coded message bar at the bottom of the camera view always shows the current status
-- **Duplicate prevention** — Students who have already checked in within 30 minutes receive an "already verified" message
-- **Attendance dashboard** — A split view showing verified students (with timestamp and confidence score) and absent students simultaneously
-- **Admin controls** — Incorrect attendance records and student registrations can be deleted directly from the UI
-- **Bulk registration** — All student ID photos can be pre-registered via a Python script (`bulk_register.py`)
+- **External webcam only** — if USB webcam is not connected, a red warning appears. The laptop's built-in camera is never used.
+- **Admin authentication** — JWT-protected dashboard. Student data, attendance records, and registration are only accessible after login.
+- **Split attendance view** — real-time side-by-side display of verified students (with timestamp and confidence %) and absent students.
+- **Bulk registration** — `bulk_register.py` reads filenames from the `photos/` folder automatically and skips already-registered students.
+- **Photo preprocessing** — `preprocess.py` uses rembg to strip backgrounds and crop faces from Canon DSLR photos before registration.
 
 ---
 
-## How It Works
+## Challenges I Solved
 
-1. A student stands in front of the laptop camera
-2. The system captures a frame every 0.8 seconds automatically
-3. DeepFace extracts a 512-dimensional facial embedding from the captured image
-4. The embedding is compared against all registered embeddings in the database using cosine similarity
-5. If the similarity score exceeds the threshold (0.35), the student is identified and attendance is recorded
-6. The result is displayed on screen within 1–2 seconds
-
----
-
-## Privacy Considerations
-
-- Original student photos are **not stored** in the database
-- Only the 512-dimensional embedding vectors are stored, which cannot be reverse-engineered back into a face image
-- This approach aligns with data minimization principles
-
----
-
-## Project Timeline
-
-| Phase | Description |
+| Problem | Solution |
 |---|---|
-| Week 1 | Problem definition, tech stack selection, system design |
-| Week 2 | Backend API development (FastAPI + PostgreSQL) |
-| Week 3 | DeepFace integration, embedding storage, matching logic |
-| Week 4 | Frontend development (camera capture, real-time UI) |
-| Week 5 | Testing, accuracy tuning, UI/UX refinement |
+| Python 3.14 incompatible with TensorFlow | Installed Python 3.11 in parallel |
+| Korean Windows encoding broke PostgreSQL driver | Switched from psycopg2 to psycopg[binary] |
+| Laptop camera + cluttered background caused 40%+ false match rate | Replaced with 1080p external webcam + Canon DSLR for registration photos |
+| rembg on every frame made verification take 5 seconds | Split into two modes: rembg only at registration, fast crop-only at verification |
+| Backlight caused face detection to fail consistently | Added OpenCV histogram equalization to normalize lighting before embedding extraction |
+| Anyone could match as any student | Added face-only crop via OpenCV to strip background and clothing from embeddings |
 
 ---
 
-## Challenges & Learnings
+## Project Structure
 
-- **Python version compatibility** — TensorFlow (required by DeepFace) does not yet support Python 3.14; resolved by installing Python 3.11 in parallel
-- **Accuracy vs. speed trade-off** — Switched from `retinaface` to `opencv` as the face detector to reduce latency, while tuning the cosine similarity threshold to maintain accuracy
-- **Windows encoding issues** — PostgreSQL connection strings caused Unicode errors on Korean Windows systems; resolved by switching from `psycopg2` to `psycopg`
-- **Real-world constraints** — Designed with a high-throughput scenario in mind (many students arriving at once), requiring sub-2-second recognition and automatic reset between verifications
+```
+face-auth/
+├── frontend/
+│   ├── index.html       # UI structure
+│   ├── style.css        # Design
+│   └── app.js           # Camera, verify loop, admin auth
+│
+├── backend/
+│   ├── main.py          # FastAPI endpoints
+│   ├── face_service.py  # DeepFace, rembg, face crop logic
+│   ├── models.py        # DB schema
+│   ├── database.py      # PostgreSQL connection
+│   ├── bulk_register.py # Batch student registration
+│   ├── add_student.py   # Single student registration
+│   └── preprocess.py    # Canon photo background removal and crop
+│
+└── .gitignore           # photos/, venv/, .env excluded
+```
 
 ---
 
-## Future Improvements
+## Privacy
 
-- Add liveness detection to prevent photo spoofing
-- Support mobile devices via PWA (Progressive Web App)
-- Integrate with school management systems for automatic record syncing
-- Add JWT-based admin authentication for the management dashboard
+- Student photos are **never stored in the database** and are excluded from this repository via `.gitignore`
+- Only **512-dimensional embedding vectors** are stored — these cannot be reverse-engineered into a face image
+- All admin endpoints are protected by **JWT authentication**
+- The only public endpoint is `/verify` — it returns a name and confidence score, nothing else
 
 ---
 
-## Developer
-
-- **Name:** Jack
-- **School:** DISCIPLE INTERNATIONAL CHRISTIAN SCHOOL
-- **Project:** Capstone Project #1
+*Built by Lee Si-on — Media Department Head, CS Major*
+*Capstone Project #1 | Advisor: Josh Teacher*
