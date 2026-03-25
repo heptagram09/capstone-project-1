@@ -1,4 +1,4 @@
-# Face Authentication Attendance System (DIFA - DICS_Face_Authentication)
+# Face Authentication Attendance System, "DIFA" (DICS_Face_Authentication)
 ### Capstone Project #1 — AI-Based Real-Time Student Check-In
 
 ---
