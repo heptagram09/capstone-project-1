@@ -1,4 +1,4 @@
-# Face Authentication Attendance System
+# Face Authentication Attendance System (DIFA - DICS_Face_Authentication)
 ### Capstone Project #1 — AI-Based Real-Time Student Check-In
 
 ---
@@ -120,5 +120,4 @@ face-auth/
 
 ---
 
-*Built by Lee Si-on — Media Department Head, CS Major*
-*Capstone Project #1 | Advisor: Josh Teacher*
+Built by Jack.
